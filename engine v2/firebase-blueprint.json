@@ -1,0 +1,132 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user profile information including education, employment, and career goals.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique Firebase Auth ID" },
+        "email": { "type": "string", "format": "email", "description": "User's email address" },
+        "displayName": { "type": "string", "description": "User's full name" },
+        "education": { "type": "string", "description": "Current education level" },
+        "employment": { "type": "string", "description": "Current employment status (optional)" },
+        "interests": { "type": "string", "description": "User's professional interests (optional)" },
+        "ambition": { "type": "string", "description": "User's career ambition (optional)" },
+        "language": { "type": "string", "description": "Preferred language for guidance" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Profile creation timestamp" },
+        "points": { "type": "integer", "description": "User's accumulated reward points" },
+        "completedMilestones": { "type": "array", "items": { "type": "string" }, "description": "List of completed milestone IDs" },
+        "level": { "type": "integer", "description": "User's current level" }
+      },
+      "required": ["uid", "email", "education"]
+    },
+    "Roadmap": {
+      "title": "Career Roadmap",
+      "description": "Stores structured milestones for the user's career path.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "milestones": { "type": "array", "items": { "$ref": "Milestone" } },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Milestone": {
+      "title": "Roadmap Milestone",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "points": { "type": "integer" },
+        "order": { "type": "integer" }
+      }
+    },
+    "Reward": {
+      "title": "Redeemable Reward",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "pointsCost": { "type": "integer" },
+        "category": { "type": "string", "enum": ["book", "note", "yearbook", "other"] },
+        "imageUrl": { "type": "string" }
+      }
+    },
+    "Redemption": {
+      "title": "User Redemption",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "rewardId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "shipped", "delivered"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Analysis": {
+      "title": "Mark Sheet Analysis",
+      "description": "Stores the results of AI-powered mark sheet analysis.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "ID of the user who uploaded the mark sheet" },
+        "fileName": { "type": "string", "description": "Name of the uploaded file" },
+        "analysisResult": { "type": "string", "description": "AI-generated analysis of the mark sheet" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Analysis timestamp" }
+      },
+      "required": ["userId", "analysisResult"]
+    },
+    "Guidance": {
+      "title": "Career Guidance",
+      "description": "Stores personalized career path recommendations.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "ID of the user receiving guidance" },
+        "recommendations": { "type": "string", "description": "AI-generated career path and advice" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Guidance timestamp" }
+      },
+      "required": ["userId", "recommendations"]
+    },
+    "FocusTask": {
+      "title": "Focus Task",
+      "description": "User's focus task for the endless runner game.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "completed"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile collection"
+    },
+    "/analyses/{analysisId}": {
+      "schema": "Analysis",
+      "description": "Mark sheet analysis results"
+    },
+    "/guidance/{guidanceId}": {
+      "schema": "Guidance",
+      "description": "Career guidance recommendations"
+    },
+    "/roadmaps/{roadmapId}": {
+      "schema": "Roadmap",
+      "description": "Structured career roadmaps"
+    },
+    "/rewards/{rewardId}": {
+      "schema": "Reward",
+      "description": "Available rewards for redemption"
+    },
+    "/redemptions/{redemptionId}": {
+      "schema": "Redemption",
+      "description": "User reward redemptions"
+    },
+    "/focusTasks/{taskId}": {
+      "schema": "FocusTask",
+      "description": "User focus tasks"
+    }
+  }
+}

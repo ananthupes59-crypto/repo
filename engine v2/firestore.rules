@@ -1,0 +1,169 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required, email format)
+    //   - displayName: string (optional)
+    //   - education: string (required)
+    //   - employment: string (optional)
+    //   - interests: string (optional)
+    //   - ambition: string (optional)
+    //   - language: string (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: analyses
+    // Document ID: {analysisId}
+    // Fields:
+    //   - userId: string (required)
+    //   - fileName: string (optional)
+    //   - analysisResult: string (required)
+    //   - timestamp: timestamp (required)
+    //
+    // Collection: guidance
+    // Document ID: {guidanceId}
+    // Fields:
+    //   - userId: string (required)
+    //   - recommendations: string (required)
+    //   - timestamp: timestamp (required)
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isNewDocOwner() {
+      return isAuthenticated() && request.auth.uid == request.resource.data.userId;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'education', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             data.education is string &&
+             data.createdAt is timestamp &&
+             (!('points' in data) || (data.points is int && data.points >= 0)) &&
+             (!('level' in data) || (data.level is int && data.level >= 1)) &&
+             (!('completedMilestones' in data) || (data.completedMilestones is list && data.completedMilestones.size() <= 100));
+    }
+
+    function isValidUserUpdate() {
+      // Ensure critical fields are immutable
+      return (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['uid', 'email', 'createdAt'])) &&
+             // Points can increase by max 500, or decrease (for rewards), but must not be negative
+             (request.resource.data.get('points', 0) >= 0) &&
+             (request.resource.data.get('points', 0) - resource.data.get('points', 0) <= 500) &&
+             // Level can only increase by 0 or 1
+             (request.resource.data.get('level', 1) >= resource.data.get('level', 1)) &&
+             (request.resource.data.get('level', 1) - resource.data.get('level', 1) <= 1) &&
+             // Milestones can only be added, never removed
+             (request.resource.data.get('completedMilestones', []).hasAll(resource.data.get('completedMilestones', [])));
+    }
+
+    function isValidAnalysis(data) {
+      return data.keys().hasAll(['userId', 'analysisResult', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.analysisResult is string &&
+             data.analysisResult.size() < 10000 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidGuidance(data) {
+      return data.keys().hasAll(['userId', 'recommendations', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.recommendations is string &&
+             data.recommendations.size() < 10000 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidFocusTask(data) {
+      return data.keys().hasAll(['userId', 'title', 'completed', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.title is string &&
+             data.title.size() > 0 &&
+             data.title.size() <= 100 &&
+             data.completed is bool &&
+             data.timestamp is timestamp;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "ananthupes59@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && isValidUserUpdate();
+    }
+
+    match /analyses/{analysisId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isNewDocOwner() && isValidAnalysis(request.resource.data);
+      allow update: if isDocOwner() && isValidAnalysis(request.resource.data) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /guidance/{guidanceId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isNewDocOwner() && isValidGuidance(request.resource.data);
+      allow update: if isDocOwner() && isValidGuidance(request.resource.data) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /roadmaps/{roadmapId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isNewDocOwner();
+      allow update: if isDocOwner() || isAdmin();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /rewards/{rewardId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /redemptions/{redemptionId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isNewDocOwner();
+      allow update: if isAdmin();
+    }
+
+    match /mock_tests/{testId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isNewDocOwner();
+      allow update: if isDocOwner() || isAdmin();
+    }
+
+    match /focusTasks/{taskId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isNewDocOwner() && isValidFocusTask(request.resource.data);
+      allow update: if (isDocOwner() && isValidFocusTask(request.resource.data) && request.resource.data.userId == resource.data.userId) || isAdmin();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+  }
+}

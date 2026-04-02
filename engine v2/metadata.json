@@ -1,0 +1,7 @@
+{
+  "name": "Career Engine",
+  "description": "An AI-powered career guidance platform for Indian students and professionals, offering personalized educational paths, scholarship finders, exam trackers, and resume building.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
